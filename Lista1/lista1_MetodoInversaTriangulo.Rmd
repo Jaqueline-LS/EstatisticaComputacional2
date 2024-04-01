@@ -1,0 +1,107 @@
+---
+title: "Geração de números aleatórios pelo Método da Inversa"
+author: "Jaqueline Lamas da Silva"
+date: "05/04/2023"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    fig_width: 5
+    fig_height: 3
+    fig_caption: yes
+  html_document:
+    df_print: paged
+toc: yes
+line-height: 1.5em
+fontsize: 12pt
+header-includes:
+- \renewcommand{\contentsname}{Sumário}
+- \usepackage{fancyhdr}
+- \usepackage{fontspec}
+- \setmainfont{Arial}
+- \usepackage {hyperref}
+- \hypersetup {colorlinks = true, pdfnewwindow=false, pdfstartview=FitH}
+---
+\addtolength{\headheight}{2cm}
+\lhead{\includegraphics[height=1.5cm]{../../template_pdf_rmd/logo.png}}
+\renewcommand{\headrulewidth}{1pt}
+
+
+\pagestyle{fancyplain}
+\renewcommand{\footrulewidth}{0pt}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Geração de 1000 valores
+
+Temos uma variável aleatória X com fdp $f_x(x)$ definida por partes, para gerar números aleatórios desta distribuição aplicamos o Método da Inversa. Ou seja, primeiro geramos numéros de uma uniforme e depois aplicamos ao valores a função quantilica $Q_x(x)$ de X.
+
+\[
+f_x(x) = 
+\begin{cases}
+x & \text{se } 0 \leq x < 1 \\
+\text{-x + 2} & \text{se } 1 \leq x \leq2
+\end{cases}
+\]
+
+
+
+\[
+Q_x(p) = 
+\begin{cases}
+\sqrt{2p} & \text{se } 0 \leq p < 1/2 \\
+2 - \sqrt{2(1-p)} & \text{se } 1/2 \leq p \leq 1
+\end{cases}
+\]
+
+
+```{r}
+gerar.tri<-function()
+{
+  u<-runif(1)
+  if(u<0.5)
+  {
+    x<-sqrt(2*u)
+  }
+  else
+  {
+    x<-2-sqrt(2*(1-u))
+  }
+  x
+}
+
+vet<-replicate(1000, gerar.tri())
+```
+
+# Comparação Histograma x Densidade teórica
+
+```{r}
+fx<- function(x)
+{
+  ifelse(x<=1, x, 2-x)
+}
+hist(vet, freq = F, ylim=c(0,1))
+curve(fx, from=0, to=2, add = T)
+```
+
+# Comparação função de distribuição empírica + teste
+
+```{r}
+Fn<-ecdf(vet)
+plot(Fn)
+
+Fx<-function(x)
+{
+  ifelse(x<=1,(x^2)/2, (((-x^2)+4*x-2)/2))
+}
+curve(Fx, from=0, to=2, add = T, col="maroon", lwd=2)
+
+ks.test(vet, y=Fx)
+```
+A probablidade de observar um valor mais extremo que o observado no caso da hipótese nula ser verdadeira é grande, maior que 0.05. Ou seja, não temos evidências para rejeitar a hipótese nula, dessa forma os dados parecem vir da distribuição $F_x(x)$.
+Isso é um indicativo que nosso gerador é bom.
+
+```{r}
+
+```
+
