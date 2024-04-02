@@ -5,8 +5,8 @@ date: "05/04/2023"
 output:
   pdf_document:
     latex_engine: xelatex
-    fig_width: 7
-    fig_height: 7
+    fig_width: 6
+    fig_height: 6
     fig_caption: yes
   html_document:
     df_print: paged
