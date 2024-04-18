@@ -42,7 +42,7 @@ Temos uma variável aleatória X com fdp $f_x(x)$ definida por partes, para gera
 f_x(x) = 
 \begin{cases}
 x & \text{se } 0 \leq x < 1 \\
-\text{-x + 2} & \text{se } 1 \leq x \leq2
+-x + 2 & \text{se } 1 \leq x \leq2
 \end{cases}
 \]
 
@@ -63,13 +63,9 @@ Qx<-function(u)
   ifelse(u<0.5, sqrt(2*u), 2-sqrt(2*(1-u)))
 }
 
-gerar.tri<-function()
-{
-  u<-runif(1)
-  Qx(u)
-}
+u<-runif(1000)
+vet<-Qx(u)
 
-vet<-replicate(1000, gerar.tri())
 ```
 
 \newpage
@@ -116,7 +112,7 @@ plot(x=quantil_teorico, y=quantil_amostra)
 
 pt_amostra<-quantile(vet, c(0.25,0.75))
 pt_teorico<-Qx(c(0.25, 0.75))
-points(x=pt_teorico, y=pt_amostra, pch=3, col="red", cex=2)
+points(x=pt_teorico, y=pt_amostra, pch=3, col="maroon2", cex=2)
 b1<-diff(pt_amostra)/diff(pt_teorico)
 b0<-pt_amostra[1]-(b1*pt_teorico[1])
 abline(a=b0, b=b1)
@@ -127,13 +123,15 @@ abline(a=b0, b=b1)
 # Divisão da amostra em 10 intervalos
 
 ```{r}
-q.teoricos2<-Qx(0:10/10)
-categorias2<-cut(vet, breaks=q.teoricos2,labels = paste0("Q",1:10))
-tabs<-table(categorias2)
+q.teoricos<-Qx(0:10/10)
+categorias<-cut(vet, breaks=q.teoricos,labels = paste0("Q",1:10))
+tabs<-table(categorias)
 e<-length(vet)/10
 Xq<-sum(((tabs-e)^2)/e)
-pchisq(Xq,length(vet)-1, lower.tail=F)
+pchisq(Xq,9, lower.tail=F)
 ```
+Não há evidências para rejeitar H0 ao nível de significância de 5%, a amostra gerada parace seguir a distribuição teórica.
+
 
 \newpage
 
@@ -141,12 +139,76 @@ pchisq(Xq,length(vet)-1, lower.tail=F)
 # Divisão da amostra em 100 intervalos
 
 ```{r}
-q.teoricos2<-Qx(0:100/100)
-categorias2<-cut(vet, breaks=q.teoricos2,labels = paste0("Q",1:100))
-tabs<-table(categorias2)
+q.teoricos<-Qx(0:100/100)
+categorias<-cut(vet, breaks=q.teoricos,labels = paste0("Q",1:100))
+tabs<-table(categorias)
 e<-length(vet)/100
 Xq<-sum(((tabs-e)^2)/e)
-pchisq(Xq,length(vet)-1, lower.tail=F)
+pchisq(Xq,99, lower.tail=F)
 ```
+Novamente não há evidências para rejeitar H0 ao nível de significância de 5%, e podemos concluir que a amostra gerada parace seguir a distribuição teórica.
+
+\newpage
+
+# Comparação de medias e variâncias
+Gere amostras de tamanhos n = 10, 20, 30, 50 e 100 e compare a média e variância dessas amostras com a média e variância verdadeiras (calcule os valores exatos da distribuição triangular).
+```{r}
+sizes<-c(10,20,30,50,100)
+Qx<-function(u)
+{
+  ifelse(u<0.5, sqrt(2*u), 2-sqrt(2*(1-u)))
+}
+
+u<-lapply(sizes,runif)
+amostras<-lapply(u, Qx)
+
+mediaT<-1
+varT<-1/6
+
+medias<-sapply(amostras, mean)
+variancias<-sapply(amostras, var)
+tabela<-rbind(medias, variancias)
+tabela<-cbind(c(mediaT, varT),tabela)
+colnames(tabela)<-c("Teorico",paste0("n = ",sizes))
+knitr::kable(tabela, caption="Tabela com os valores das médias 
+             e variâncias para os diferentes tamanhos de amostra")
+```
+Após comparar as médias e as variâncias também podemos dizer que nossa amostra parace seguir a distribuição triângular proposta, os valores se aproximam do valor teórico a medida que aumentamos o tamanho da amostra.
+
+\newpage
+
+
+# Gerando os números sem usar "ifelse"
+```{r}
+Qx<-function(u)
+{
+  x<-as.numeric(u<0.5)
+  qx<-(sqrt(2*u)^x)*(2-sqrt(2*(1-u))^(1-x))
+  return(qx)
+}
+u<-runif(1000)
+vet<-Qx(u)
+hist(vet, freq = F)
+```
+
+\newpage
+
+# Outra abordagem para gerar uma triangular:
+Outra abordagem para gerar uma triangular é pela soma de uniformes independentes.
+$U1$: Uniforme (0,1)
+$U2$: Uniforme (0,1)
+
+$\Delta$=$U1+U2$
+```{r}
+u1<-runif(1000)
+u2<-runif(1000)
+vet<-u1+u2
+hist(vet, freq = F)
+curve(fx, from=0, to=2, add = T)
+
+```
+
+
+
 
 

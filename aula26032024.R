@@ -76,5 +76,12 @@ curve(Fx, from=0, to=2, add = T, col="maroon", lwd=2)
 # Gerar os numeros de maneiras vetorizada
 # Outra abordagem para gerar números aleatórios de uma triangular (transformação de variável, prob.2)
 
-
-
+u<-runif(1000)
+Qx<-function(u)
+{
+  x<-as.numeric(u<0.5)
+  qx<-(sqrt(2*u)^x)*(2-sqrt(2*(1-u))^(1-x))
+  return(qx)
+}
+vet<-Qx(u)
+hist(vet)
