@@ -11,7 +11,8 @@ y2
 x3<-c(1,0,0,0,1,2,1,0,0,1,1)
 diferencas<-x3[-1]!=x3[-length(x3)]
 indice<-c(which(diferencas), length(x3))
-# diff(0,indice)
+diff(indice)
+
 
 
 st1<-"aaaabbabbbaabba"
@@ -46,6 +47,10 @@ gerador.congruencial <- function(x0 = 123456789 ,n = 1,m = 2^31 - 1 ,A = 16807 ,
 amostra <- gerador.congruencial(n=100)
 
 valor <- amostra[-1]>amostra[-100]
+rle(valor)
+table(rle(valor)$lengths)
+
+
 
 soma <- 0
 
@@ -93,13 +98,13 @@ raiz3
 
 dUser<-function(x)
 {
-  12*(x-0.5)^2
+  ifelse(x>=0 & x<=1, 12*(x-0.5)^2,0)
 }
-dUser(0.5)
+dUser(5)
 
 pUser<-function(x)
 {
-   (4*(x-0.5)^5) + 1/2
+  ifelse(x>=0 & x<=1,(4*(x-0.5)^3) + 1/2,0)
 }
 pUser(0.5)
 
@@ -108,6 +113,27 @@ qUser<-function(p)
   valor<-p-1/2
   sign(valor)*(abs(valor)/4)**(1/3) + 1/2
 }
+qUser(0.7)
+
+qUser2<-function(p)
+{ 
+  x<-1E200
+  qUserINT<-function(x,prob)
+  {
+     (pUser(x)-prob)^2
+  }
+  
+  valor<-optimize(qUserINT,prob=p,maximum = F,lower = -1E200, upper = 1E200)
+  
+  p<-0.7
+  optim(par = 0, qUserINT, prob=p,lower = -Inf, upper = Inf, method = "Brent")
+  
+  return(valor$minimum)
+}
+
+qUser2(0.7)
+
+
 
 U1<-runif(1000)
 amostra1<-qUser(U1)
@@ -151,3 +177,5 @@ x4<-itera(x3)
 x4
 sqrt(10)
 
+hist(medias, freq = F)
+curve(dnorm(x,mean=mu, sd=sqrt(sigma2)/n), from=params$a, to=params$b, add=T, col="maroon2", lwd=2)

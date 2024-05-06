@@ -1,0 +1,192 @@
+---
+title: "Aplicação do Método da Inversa"
+subtitle: "Procedimentos Numéricos em Bootstrap Paramétrico"
+author: "Jaqueline Lamas da Silva"
+date: "05/02/2023"
+params:
+  a: 0
+  b: 1
+output:
+  pdf_document:
+    latex_engine: xelatex
+    fig_width: 5
+    fig_height: 4
+    fig_caption: yes
+  html_document:
+    df_print: paged
+toc: yes
+line-height: 1.5em
+fontsize: 12pt
+header-includes:
+- \renewcommand{\contentsname}{Sumário}
+- \usepackage{fancyhdr}
+- \usepackage{fontspec}
+- \setmainfont{Arial}
+- \usepackage {hyperref}
+- \hypersetup {colorlinks = true, pdfnewwindow=false, pdfstartview=FitH}
+---
+\addtolength{\headheight}{2cm}
+\lhead{\includegraphics[height=1.5cm]{../../template_pdf_rmd/logo.png}}
+\renewcommand{\headrulewidth}{1pt}
+
+
+\pagestyle{fancyplain}
+\renewcommand{\footrulewidth}{0pt}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(666)
+library(stats)
+```
+
+\newpage
+
+# Questão 1:
+
+Para a definição da função densidade de probabilidade o suporte é definido como uma parâmetro do relatório, no arquivo RMD, não consegui elaborar uma forma de receber a expressão e passar para a dUser. 
+O relatório foi baseado na função:
+
+$f_X(x) = 12(x-0.5)^2 I(x)_{[0,1]}$
+
+```{r}
+dUser<-function(x,a=params$a, b=params$b) # fdp da V.A., o usuario vai definir a expressão e o suporte da distribuição
+{
+    I<-as.numeric(x>=a & x<=b)
+    I*(12*(x-0.5)^2)
+    #ifelse(x<a , 0, ifelse( x>b , 0, 12*(x-0.5)^2))
+  
+}
+```
+
+## Letra a:
+
+```{r}
+# Calculo da esperanca e da variancia
+esp<-function(x) x*(12*(x-0.5)^2)
+variancia<-function(x, mu) ((x-mu)^2)*(12*(x-0.5)^2)
+mu<-integrate(esp, lower = params$a, upper=params$b)$value
+sigma2<-integrate(variancia,mu=mu, lower = params$a, upper=params$b)$value
+```
+* O valor esperado é: `r mu`
+
+* A variância é: `r sigma2`
+
+
+\newpage
+
+## Letra b:
+
+```{r, warning=FALSE}
+pUser<-function(x, a=params$a, b=params$b) # Fda da V.A.
+{
+  I2<-x>b
+  I2*1+(1-I2)*(integrate(dUser,lower = -Inf,upper= x)$value)
+
+  #ifelse(x<a,0,
+  #ifelse(x>b,1,integrate(dUser,lower = -Inf,upper= x)$value))
+}
+pUser<-Vectorize(pUser)
+
+qUser<-function(p, a=params$a, b=params$b) # nao funciona vetorizada
+{ 
+  valor<-optimise(function(x){(pUser(x)-p)^2}, maximum = F, 
+                  lower = a , upper = b)
+  return(valor$minimum)
+}
+qUser<-Vectorize(qUser) # Vetorizacao "forçada"
+
+
+rUser<-function(n)
+{
+  u<-runif(n)
+  qUser(u)
+}
+
+
+# Verificação da qualidade do gerador
+
+amostra1<- rUser(1000)
+
+hist(amostra1, freq = F)
+curve(dUser, from=params$a, to=params$b, col="aquamarine3", lty=2, add=T, lwd=2)
+
+
+fn<-ecdf(amostra1)
+plot(fn)
+curve(pUser(x), from = 0, to = 1, add = T, col= "maroon", lwd=2)
+
+ks.test(amostra1, y=pUser)
+
+```
+
+Para verificar a qualidade do gerador foi gerada uma amostra de 1000 valores, a partir dessa amostra fiz a comparação do histograma com a densidade teórica. 
+Além disso, plotei a função de distribuição empírica junto com a verdadadeira.
+E, por fim, foi realizado o teste de Kolmogorov-Smirnov, e pelo teste não temos evidências para rejeitar a hipótese nula, dessa forma os dados parecem vir da pUser. 
+O gerador parece bom, porém muito lento.
+
+\newpage
+
+# Questão 2:
+
+Implementar procedimento computacional para geração de 1.000 amostras de
+tamanho n provenientes desta população. Repita este experimento para os
+valores de n = 5, 15, 25, 50, 100, 200 e 500. 
+
+Como a geração das amostras está muito lenta, salvei um objeto com as amostras para conseguir rodar o relatório várias vezes sem precisar gerar novas as amostras.
+
+```{r}
+n<-c(5, 15, 25, 50, 100, 200, 500)
+# amostras<-lapply(n, FUN = function(n){replicate(1000,rUser(n))})
+# saveRDS(amostras, file="amostras.RDS")
+amostras<-readRDS("C:/ufjf/EstatisticaComputacional2/amostras.RDS")
+
+```
+
+\newpage
+
+# Questão 3:
+
+```{r}
+for(i in seq_along(n))
+{
+    medias<-apply(amostras[[i]], 2, mean)
+    
+    hist(medias, freq = F, main=paste0("Histograma das médias, n = ",n[i]))
+    curve(dnorm(x,mean=mu, sd=sqrt(sigma2/n[i])), from=min(medias), 
+        to=max(medias), add=T, col="maroon2", lwd=2)
+    print("A distribuição das médias está próxima da teórica")
+    
+    fn<-ecdf(medias)
+    plot(fn, main= paste0("Distribuição empírica e teórica das médias, n = ", n[i]))
+    curve(pnorm(x, mean=mu, sd=sqrt(sigma2/n[i])), from = 0, 
+        to = 1, add = T, col= "maroon2", lwd=2)
+  
+    
+    mediaMedias<-mean(medias)
+    print("----Estatisticas descritivas----")
+    print(paste0("A media verdadeira é: ", mu, " e a empírica é: ", round(mediaMedias,3)))
+    print(paste0("O desvio padrão teórico é: ",round(sqrt(sigma2/n[i]),3) ," e o empírico é: ", round(sd(medias),3)))
+    print("-----Teste de Normalidade------")
+    teste<-ks.test(medias, y="pnorm", mean=mu, sd=sqrt(sigma2/n[i]))
+    print(teste)
+    if(teste$p.value>0.01)
+    {
+      print("A distribuição obtida para as médias é próxima da teórica!")
+    }
+    else
+    {
+      print("A distribuição obtida para as médias não é próxima da teórica!")
+    }
+    
+}
+
+
+```
+
+\newpage
+
+# Conclusão
+
+Não consegui criar um gerador eficiênte, por isso não consegui testar para outras densidades. Para a função testada o Teorema do Limite Central foi observado no primeiro tamanho de amostra, o teste de Kolmogorov não apresentou evidências do contrário.
+
+

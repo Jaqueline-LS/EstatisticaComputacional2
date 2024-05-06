@@ -1,0 +1,253 @@
+---
+title: "Geração de Números Aleatórios"
+author: "Jaqueline Lamas da Silva"
+date: "10/05/2023"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    fig_width: 7
+    fig_height: 7
+    fig_caption: yes
+  html_document:
+    df_print: paged
+toc: yes
+line-height: 1.5em
+fontsize: 12pt
+header-includes:
+- \renewcommand{\contentsname}{Sumário}
+- \usepackage{fancyhdr}
+- \usepackage{fontspec}
+- \setmainfont{Arial}
+- \usepackage {hyperref}
+- \hypersetup {colorlinks = true, pdfnewwindow=false, pdfstartview=FitH}
+---
+\addtolength{\headheight}{2cm}
+\lhead{\includegraphics[height=1.5cm]{../../template_pdf_rmd/logo.png}}
+\renewcommand{\headrulewidth}{1pt}
+
+
+\pagestyle{fancyplain}
+\renewcommand{\footrulewidth}{0pt}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(123)
+library(stats)
+```
+
+
+# Questão 1:
+Apresente o código de um método para gerar uma variável aleatória com a
+seguinte função de densidade de probabilidade:
+
+$f_X(x) = e^{-2|x|}, x \in \mathbb{R}$
+
+```{r}
+# Densidade
+fx<-function(x)exp(-2*abs(x))
+fx(-10)
+curve(fx(x), from=-10, to=10)
+
+Fx<-function(x)
+{
+  integrate(fx, lower = -10, upper = x)$value
+}
+
+Fx<-Vectorize(Fx)
+Fx(1.891281e-06)
+Fx(1)
+Fx(-7)
+
+Qxi<-function(x,prob)
+{
+  (Fx(x)-prob)^2
+}
+
+Qx<-function(p)
+{
+  optimize(Qxi,prob=p, maximum = F, lower = -10, upper = 10)$minimum
+}
+Qx<-Vectorize(Qx)
+
+amostra<-Qx(runif(1000))
+ks.test(amostra,Fx)
+hist(amostra, breaks=100, freq = F)
+curve(fx(x), from=-10, to=10, add=T, col="coral2", lwd=3)
+```
+
+# Questão 2:
+![](imagens/i1.png)
+```{r}
+u<-runif(1000)
+Z<-log(u/(1-u))
+hist(Z, freq = F)
+curve(dlogis(x), from=-6, to=6, add = T)
+ks.test(Z, "plogis")
+
+# A distribuição logistica pertence a familia locação-escala
+mu<-5
+sigma<-2
+X<-sigma*Z+5
+hist(X, freq=F)
+curve(dlogis(x, location = mu, scale = sigma), from=mu-4*sigma, to=mu+4*sigma, add = T)
+
+ks.test(X, "plogis") # Rejeitou, a X não tem locacao 0 e scala 1
+ks.test(X, "plogis", location=mu, scale=sigma) 
+
+
+```
+# Questão 3:
+
+```{r}
+alfa<-c(0.8, 0.87, 0.92, 0.95)
+
+GerarU.alfa<-function(alfa)
+{
+  u<-runif(1)
+  while(u>=alfa)
+  {
+    u<-runif(1)
+  }
+  return(u)
+  
+}
+
+u<-runif(1000)
+par(mfrow=c(4,2))
+for(i in seq_along(alfa))
+{
+  amostra<-replicate(1000,GerarU.alfa(alfa[i]))
+  hist(amostra, freq=F, breaks = 20,xlim=c(0,1), 
+       main=paste0("Histograma da amostra (gerador 1), alfa = ", alfa[i]))
+  curve(dunif(x,max=alfa[i]),from = 0, to=1, add=T, col="maroon", lwd=2)
+  
+  U.alfa<-alfa[i]*u
+  hist(U.alfa, freq=F, breaks = 20 ,xlim=c(0,1), 
+       main=paste0("Histograma da amostra (gerador 2), alfa = ", alfa[i]))
+  curve(dunif(x,max=alfa[i]),from = 0, to=1, add=T, col="maroon", lwd=2)
+}
+
+
+```
+Comparando pelos gráficos as duas formas de gerar a distribuição $U(0,\alpha)$ paracem equivalentes. Não observei nenhuma melhoria de um método para o outro.
+
+# Questão 4:
+
+## Letra a:
+```{r}
+
+geradorCM<-function(m=((2^13)-1), A=17, seed=666,n) # congruencial multiplicativo
+{
+  u<-numeric(n)
+  anterior<-seed
+  for(i in 1:n)
+  {
+    x<-(anterior*A)%%m
+    u[i]<-x
+    anterior<-x
+  }
+  return(u)
+}
+
+
+```
+
+## Letra b:
+
+```{r}
+X<-geradorCM(n=500)
+```
+## Letra c:
+
+```{r}
+cor(X[-1],X[-length(X)])
+```
+Os pares $x_i$ e $x_{i+1}$ possuem uma correlação baixa.
+
+
+## Letra d:
+
+```{r}
+plot(X[-1],X[-length(X)])
+```
+
+Os pontos estão situados em diversas linhas.
+
+**Variando o valor de A:**
+
+```{r}
+a<-c(4,5,7,17)
+par(mfrow=c(2,2))
+for(i in seq_along(a))
+{
+  X<-geradorCM(n=500, A=a[i])
+  plot(X[-1],X[-length(X)], main=paste0("A = ", a[i]))
+}
+```
+Para valores pares de "a" o período é curto e os números aléatórios gerados começam a repetir. Para a = 3 foi observado 3 retas, para a = 5, 5 retas e assim por diante. Para velores pequenos de **a** os números possuem uma correlação mais forte.
+
+## Letra e:
+
+```{r}
+Y<-geradorCM(n=500,A=85)
+cor(Y[-1],Y[-length(Y)])
+plot(Y[-1],Y[-length(Y)])
+
+```
+
+## Letra f:
+```{r}
+plot(Y[-c(1,2)],Y[-c(length(Y),length(Y)-1)])
+cor(Y[-c(1,2)],Y[-c(length(Y),length(Y)-1)])
+```
+Para a = 85 já apresenta uma corelação muito fraca, apesar dele não ser primo.
+
+## Letra g:
+
+Recomenda-se utilizar números primos altos para melhorar a qualidade do gerador.
+
+
+
+# Questão 5:
+
+## Letra a:
+Mostre que, se X1 e X2 são independentes e identicamente distribuídas de acordo com a normal padrão, então $C= \frac{X_1}{X_2}$ tem distribuição de Cauchy.
+```{r}
+set.seed(666)
+
+u1<-runif(1000)
+u2<-runif(1000)
+
+X1<-sqrt(-2*log(u1))*cos(2*pi*u2)
+X2<-sqrt(-2*log(u1))*sin(2*pi*u2)
+
+
+C<-X1/X2
+
+hist(C, freq = F, breaks = 100)
+curve(dcauchy(x), from=-10, to=10, col="coral2", add=T, lwd=3)
+
+ks.test(C, "pcauchy")
+```
+O teste de Kolmogorov não rejeitou a hipótese de que *C* seja proveniente de uma Cauchy com parâmetro de locação igual 0 e de escala igual a 1. Dessa forma, mostramos de forma empírica o resultado.
+
+
+## Letra b:
+
+$F(x) = \frac{arctg(x)}{\pi}$
+```{r}
+
+Fx<-function(x){ arctan(x)/pi }
+
+Qx<-function(p){ tan(pi*p) }
+
+Rx<-function(n)
+{ 
+  Qx(runif(n))
+}
+
+C2<-Rx(1000)
+hist(C2, freq = F, breaks = 100)
+curve(dcauchy(x), from=-10, to=10, col="coral2", add=T, lwd=3)
+```
+
