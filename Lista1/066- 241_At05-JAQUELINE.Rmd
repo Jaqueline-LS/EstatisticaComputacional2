@@ -1,0 +1,193 @@
+---
+title: "Atividade 5 - Integração Monte Carlo"
+author: "Jaqueline Lamas da Silva"
+date: "2024"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    fig_width: 10
+    fig_height: 10
+    fig_caption: yes
+  html_document:
+    df_print: paged
+toc: yes
+line-height: 1.5em
+fontsize: 12pt
+header-includes:
+- \renewcommand{\contentsname}{Sumário}
+- \usepackage{fancyhdr}
+- \usepackage{fontspec}
+- \setmainfont{Arial}
+- \usepackage {hyperref}
+- \hypersetup {colorlinks = true, pdfnewwindow=false, pdfstartview=FitH}
+---
+\addtolength{\headheight}{2cm}
+\lhead{\includegraphics[height=1.5cm]{../../template_pdf_rmd/logo.png}}
+\renewcommand{\headrulewidth}{1pt}
+
+
+\pagestyle{fancyplain}
+\renewcommand{\footrulewidth}{0pt}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\newpage
+
+# Exercício 1: 
+
+## Letra a:
+\begin{center}
+$ \int_0^1{exp(e^x)}dx$ ( Caso 1 )
+\end{center}
+
+```{r}
+set.seed(666)
+g.u<-function(x)
+{
+  exp(exp(x))
+}
+u<-runif(1000000)
+mean(g.u(u))
+```
+
+![Resolução pelo Wolframalpha](C:/ufjf/EstatisticaComputacional2/Lista1/imagens/i3.png)
+A partir de 1 milhão já consegue-se uma aproximação da solução da integral com precisão até a segunda casa decimal.
+
+
+## Letra b:
+
+\begin{center}
+$\int_{-2}^{2} e^{x+x^2}$ (caso 2)
+\end{center}
+```{r}
+funcao.g<-function(x) exp(x + x^2)
+
+funcao.h<-function(y,a,b) # Função transforma em uma integral no intervalo 0 e 1
+{
+  (b-a)*funcao.g(y*(b-a)+a)
+}
+
+u<-runif(100000)
+mean(funcao.h(u,a=-2,b=2))
+```
+![Resolução pelo Wolframalpha](C:/ufjf/EstatisticaComputacional2/Lista1/imagens/i4.png)
+
+
+## Letra c:
+
+\begin{center}
+$\int_{0}^{\infty} \frac{x}{(1+x^2)^2}$ (caso 3)
+\end{center}
+
+```{r}
+funcao.g<-function(x) x/(1+x^2)^2
+funcao.h<-function(y)
+{
+  funcao.g(y/(1-y)) / (1-y)^2
+}
+u<-runif(100000)
+mean(funcao.h(u))
+```
+
+!["Resolução pelo Wolframalpha"](C:/ufjf/EstatisticaComputacional2/Lista1/imagens/i5.png)
+
+
+## Letra d:
+
+\begin{center}
+$\int_{0}^{1} \int_{0}^1 e^{(x+y)^2}dydx$
+\end{center}
+
+```{r}
+funcao.g<-function(x,y){ exp((x+y)^2) }
+u1<-runif(100000)
+u2<-runif(100000)
+mean(funcao.g(u1,u2))
+```
+![Resolução pelo Wolframalpha](C:/ufjf/EstatisticaComputacional2/Lista1/imagens/i6.png)
+
+## Letra e:
+
+\begin{center}
+
+$\int_{0}^{\infty} \int_{0}^x e^{-(x+y)}dydx$
+\end{center}
+
+```{r}
+funcao.g<-function(x,y)
+{
+  I.y<-as.numeric(y<x) # Dica do livro Ross simulation, p.44
+  exp(-(x+y)) * I.y
+}
+
+funcao.h<-function(u1,u2)
+{
+   funcao.g(u1/(1-u1), u2/(1-u2) ) / ((1-u1)^2 * (1-u2)^2) # Transformação do caso 3 nas duas variáveis
+}
+
+u1<-runif(1000000)
+u2<-runif(1000000)
+mean(funcao.h(u1,u2))
+```
+![Resolução pelo Wolframalpha](C:/ufjf/EstatisticaComputacional2/Lista1/imagens/i7.png)
+\newpage
+
+# Exercício 2:
+\begin{center}
+$ COV( U , e^U) = E [Ue^U] - E[U]E[e^U]$
+\end{center}
+
+```{r}
+funcao.g<-function(x) x*exp(x)
+funcao.h<-function(x) exp(x)
+u<-runif(100000)
+Cov<-mean(funcao.g(u)) - mean(u) * mean(funcao.h(u))
+
+```
+$COV( U , e^U)$ = `r round(Cov,3)`
+
+\newpage
+# Exercício 3:
+
+```{r}
+Nmin<-function()
+{
+  u<-runif(1)
+  soma<-u
+  n<-1
+  while(soma<1)
+  {
+    u<-runif(1)
+    soma<-soma+u
+    n<-n+1
+  }
+  return(n)
+}
+```
+
+## Letra a:
+```{r}
+N<-replicate(100,Nmin())
+mean(N)
+```
+
+## Letra b:
+
+```{r}
+N<-replicate(1000,Nmin())
+mean(N)
+```
+## Letra c:
+
+```{r}
+N<-replicate(10000,Nmin())
+mean(N)
+```
+$e$ é a quantidade mínima média de números reais aleatórios entre 0 e 1 necessária para que a soma exceda 1. Dessa forma $E(N)$ é 2.7182…. Existem diversas maneiras de mostrar que o valor esperado de N é o número de Euler, uma delas pode ser encontrada no primeiro link das referências.
+
+
+# Referências
+
+**Prova do valor esperado de N.** Disponível em :https://www.physics.harvard.edu/files/sol38.pdf. Acesso em: 10/06/2024

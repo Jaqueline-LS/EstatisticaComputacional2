@@ -1,0 +1,455 @@
+---
+title: "Geração de números aleatórios de misturas"
+author: "Grupo B: Gabriel, Ismael, Jaqueline e João Victor"
+date: "29/05/2024"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    fig_width: 10
+    fig_height: 10
+    fig_caption: yes
+  html_document:
+    df_print: paged
+toc: yes
+line-height: 1.5em
+fontsize: 12pt
+header-includes:
+- \renewcommand{\contentsname}{Sumário}
+- \usepackage{fancyhdr}
+- \usepackage{fontspec}
+- \setmainfont{Arial}
+- \usepackage {hyperref}
+- \hypersetup {colorlinks = true, pdfnewwindow=false, pdfstartview=FitH}
+---
+\addtolength{\headheight}{2cm}
+\lhead{\includegraphics[height=1.5cm]{../../template_pdf_rmd/logo.png}}
+\renewcommand{\headrulewidth}{1pt}
+
+
+\pagestyle{fancyplain}
+\renewcommand{\footrulewidth}{0pt}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+# Bibliotecas:
+library(e1071) ## Utilizada para calcular a curtose e assimetria das amostras.
+# Paletas de Cores Utilizadas:
+  cores <- c(
+    "#FF7FC6", "#D55E00", "#E69F00", "#F0E442","#0072B2", "#A2DDFF", "#009E73", ## Paleta Wong
+    "#FFFFFF", "#AAAAAA", "#000000" ## Neutras
+    )
+```
+
+\newpage
+
+```{r}
+#### Funções para calcular e visualizar as densidade das misturas ######################. -----
+
+## "d.": Calcula a função de densidade de probabilidade.
+## "p.": Calcula a função de distribuição acumulada.
+## "c.": Calcula as estatísticas.
+
+## x: Variavel.
+## p: Vetor de pesos.
+## mi: Vetor de medias.
+## dp: Vetor de desvios padrao.
+
+d.Mist.norm <- function(x, p, mi, dp) {
+  densidade <- 0 ## Cria o vetor de densidades.
+  for (i in 1:length(p)) { densidade <- densidade+p[i]*dnorm(x, mean = mi[i], sd = dp[i]) } ## Soma as densidades.
+  return(densidade) ## Retorna o vetor de densidades.
+}
+
+d.Mist.gama <- function(x, p, forma, taxa) {
+  densidade <- 0 ## Cria o vetor de densidades.
+  for (i in 1:length(p)) { densidade <- densidade+p[i]*dgamma(x, shape = forma[i], rate = taxa[i]) } ## Soma as densidades.
+  return(densidade) ## Retorna o vetor de densidades.
+}
+
+p.Mist.norm <- function(x, p, mi, dp) {
+  p.acumulada <- rep(0, length(x)) ## Cria o vetor de probabilidades acumuladas.
+  for (i in 1:length(p)) { p.acumulada <- p.acumulada+p[i]*pnorm(x, mean = mi[i], sd = dp[i]) } ## Soma as probabilidades.
+  return(p.acumulada) ## Retorna o vetor de probabilidades acumuladas.
+}
+
+p.Mist.gama <- function(x, p, forma, taxa) {
+  p.acumulada <- rep(0, length(x)) ## Cria o vetor de probabilidades acumuladas.
+  for (i in 1:length(p)) { p.acumulada <- p.acumulada+p[i]*pgamma(x, shape = forma[i], rate = taxa[i]) } ## Soma as probabilidades.
+  return(p.acumulada) ## Retorna o vetor de probabilidades acumuladas.
+}
+
+c.Mist.Norm <- function(p, mi, dp) {
+  media <- sum(p*mi) ## Calcula a média (exato).
+  variancia <- sum(p*(dp**2+mi**2))-media**2 ## Calcula a variância (exato).
+  assimetria <- sum(p*((mi-media)/sqrt(variancia))**3) ## Calcula o coeficiente de assimetria usando momentos (aproximado).
+  curtose <- sum(p*((mi-media)/sqrt(variancia))**4)-3 ## Calcula o excesso de curtose usando momentos (aproximado).
+  return(list(media = media, variancia = variancia, assimetria = assimetria, curtose = curtose)) ## Retorna uma lista contendo as estatísticas.
+}
+
+c.Mist.gama <- function(p, forma, taxa) {
+  media <- sum(p*(forma/taxa)) ## Calcula a média (exato).
+  variancia <- sum(p*(forma/taxa**2+(forma/taxa)**2))-media**2 ## Calcula a variância (exato).
+  assimetria <- sum(p*(2/sqrt(forma)))/sqrt(variancia) ## Calcula o coeficiente de assimetria usando momentos (aproximado).
+  curtose <- sum(p*(6/forma))/variancia ## Calcula o excesso de curtose usando momentos (aproximado).
+  return(list(media = media, variancia = variancia, assimetria = assimetria, curtose = curtose)) ## Retorna uma lista contendo as estatísticas.
+}
+#########################################################################################.
+```
+
+Neste relátorio vou apresentar apenas os resuldados. Como o trabalho foi colaborativo no relatório dos meus colegas os códigos foram expostos.
+
+# Misturas estudadas:
+
+* Mistura 1: $\frac{2}{3}N(0,1) +\frac{1}{3} N(0, (\frac{1}{10})^2)$
+
+
+* Mistura 2: $\frac{3}{4}N(0,1) +\frac{1}{4} N(\frac{3}{2}, (\frac{1}{3})^2)$
+
+
+* Mistura 3: $\sum_{k=0}^{5}(\frac{2^{5-k}}{63}) N (\frac{65-96(\frac{1}{2})^k}{21}, (\frac{(\frac{32}{63})^2}{2^{2k}})$
+
+
+* Mistura 4: $\frac{2}{3}Gama(\alpha=11,\lambda=120)+\frac{1}{3}Gama(\alpha=11,\lambda=720)$
+
+\newpage
+
+# Momentos das misturas:
+
+```{r}
+# 1) -----
+pesos1 <- c(2/3, 1/3) ## Vetor de pesos.
+medias1 <- c(0, 0) ## Vetor de medias.
+desvios1 <- c(1, 1/10) ## Vetor de desvios padrao.
+estatisticas.pop1 <- c.Mist.Norm(p = pesos1, mi = medias1, dp = desvios1) ## Calcula as estatísticas.
+
+# 2) -----
+pesos2 <- c(3/4, 1/4) ## Vetor de pesos.
+medias2 <- c(0, 3/2) ## Vetor de medias.
+desvios2 <- c(1, 1/3) ## Vetor de desvios padrao.
+estatisticas.pop2 <- c.Mist.Norm(p = pesos2, mi = medias2, dp = desvios2) ## Calcula as estatísticas.
+
+# 3) -----
+pesos3 <- sapply(0:5, function(i) (2^(5 - i)) / 63) ## Vetor de pesos.
+medias3 <- sapply(0:5, function(i) (65 - 96 *(1/2)**i) / 21) ## Vetor de medias.
+desvios3 <- sapply(0:5, function(i) sqrt((32/63)**2 / 2**(2*i))) ## Vetor de desvios padrao.
+estatisticas.pop3 <- c.Mist.Norm(p = pesos3, mi = medias3, dp = desvios3) ## Calcula as estatísticas.
+
+# 4) -----
+pesos4 <- c(0.5, 0.5) ## Vetor de pesos.
+formas4 <- c(2, 5) ## Vetor de formas.
+taxas4 <- c(1, 2) ## Vetor de taxas.
+estatisticas.pop4 <- c.Mist.gama(p = pesos4, forma = formas4, taxa = taxas4) ## Calcula as estatísticas.
+
+l.estatisticas.pop <- list(estatisticas.pop1, estatisticas.pop2, estatisticas.pop3, estatisticas.pop4) ## Armazena as estatísticas em uma lista.
+
+for (i in 1:4) {
+  cat(sprintf("Amostra %d:\n", i)) ## Identifica a amostra.
+  cat(sprintf("Média Populacional: %.2f\n", l.estatisticas.pop[[i]]$media)) ## Imprime a média populacional.
+  cat(sprintf("Variância Populacional: %.2f\n", l.estatisticas.pop[[i]]$variancia)) ## Imprime a variância amostral.
+  cat(sprintf("Assimetria: %.2f\n", l.estatisticas.pop[[i]]$assimetria)) ## Imprime a assimetria.
+  cat(sprintf("Curtose: %.2f\n\n", l.estatisticas.pop[[i]]$curtose)) ## Imprime a Curtose.
+}
+```
+
+
+```{r}
+par(mfrow = c(2,2)) ## Configura o layout gráfico.
+
+# 1) -----
+curve(d.Mist.norm(x, p = pesos1, mi = medias1, dp = desvios1), 
+      main = "Mistura 1", xlab = "", ylab = "",
+      xlim = c(-3,3), ylim = c(0,1.5),col = cores[7], lty = 1) ## Plota a curva de densidade.
+legend("left", bty = "n", legend = "FDP", col = cores[7], lty = 1) ## Adiciona a legenda da curva.
+legend("topleft", bty = "n", legend = c(paste("Media: ", round(estatisticas.pop1$media, 3)), 
+                                       paste("Variancia: ", round(estatisticas.pop1$variancia, 3)),
+                                       paste("Assimetria: ", round(estatisticas.pop1$assimetria, 3), "(aprox.)"),
+                                       paste("Curtose: ", round(estatisticas.pop1$curtose, 3), "(aprox.)"))) ## Adiciona a legenda dos valores.
+
+# 2) -----
+curve(d.Mist.norm(x, p = pesos2, mi = medias2, dp = desvios2), 
+      main = "Mistura 2", xlab = "", ylab = "",
+      xlim = c(-3,3), ylim = c(0,1),col = cores[7], lty = 1) ## Plota a curva de densidade.
+legend("left", bty = "n", legend = "FDP", col = cores[7], lty = 1) ## Adiciona a legenda da curva.
+legend("topleft", bty = "n", legend = c(paste("Media: ", round(estatisticas.pop2$media, 3)), 
+                                       paste("Variancia: ", round(estatisticas.pop2$variancia, 3)),
+                                       paste("Assimetria: ", round(estatisticas.pop2$assimetria, 3), "(aprox.)"),
+                                       paste("Curtose: ", round(estatisticas.pop2$curtose, 3), "(aprox.)"))) ## Adiciona a legenda dos valores.
+
+# 3) -----
+curve(d.Mist.norm(x, p = pesos3, mi = medias3, dp = desvios3), 
+      main = "Mistura 3", xlab = "", ylab = "",
+      xlim = c(-3,3), ylim = c(0,1),col = cores[7], lty = 1) ## Plota a curva de densidade.
+legend("left", bty = "n", legend = "FDP", col = cores[7], lty = 1) ## Adiciona a legenda da curva.
+legend("topleft", bty = "n", legend = c(paste("Media: ", round(estatisticas.pop3$media, 3)), 
+                                       paste("Variancia: ", round(estatisticas.pop3$variancia, 3)),
+                                       paste("Assimetria: ", round(estatisticas.pop3$assimetria, 3), "(aprox.)"),
+                                       paste("Curtose: ", round(estatisticas.pop3$curtose, 3), "(aprox.)"))) ## Adiciona a legenda dos valores.
+
+# 4) -----
+curve(d.Mist.gama(x, p = pesos4, forma = formas4, taxa = taxas4), 
+      main = "Mistura 4", xlab = "", ylab = "",
+      xlim = c(0,8), ylim = c(0,1),col = cores[7], lty = 1) ## Plota a curva de densidade.
+legend("left", bty = "n", legend = "FDP", col = cores[7], lty = 1) ## Adiciona a legenda da curva.
+legend("topleft", bty = "n",legend = c(paste("Media: ", round(estatisticas.pop4$media, 3)), 
+                                       paste("Variancia: ", round(estatisticas.pop4$variancia, 3)),
+                                       paste("Assimetria: ", round(estatisticas.pop4$assimetria, 3), "(aprox.)"),
+                                       paste("Curtose: ", round(estatisticas.pop4$curtose, 3), "(aprox.)"))) ## Adiciona a legenda dos valores.
+```
+
+```{r}
+#### Funções para gerar amostras das misturas ##########################################. -----
+
+## n: Número de repetições.
+## p: Vetor de pesos.
+## mi: Vetor de medias.
+## dp: Vetor de desvios padrao.
+
+gerador.normal <- function(n, p, mi, dp) {
+  num.comp <- length(p) ## Determina o número de componentes.
+  amostra <- numeric(n) ## Cria um vetor para armazenar os valores da amostra.
+  for (i in 1:n) {
+    componente <- sample(1:num.comp, 1, prob = p) ## Seleciona um componente de forma aleatória.
+    amostra[i] <- rnorm(1, mean = mi[componente], sd = dp[componente]) ## Gera um valor para o componente selecionado.
+  }
+  return(amostra) ## Retorna o vetor contendo os valores da amostra.
+}
+
+gerador.gama <- function(n, p, forma, taxa) {
+  num.comp <- length(p) ## Determina o número de componentes.
+  amostra <- numeric(n) ## Cria um vetor para armazenar os valores da amostra.
+  for (i in 1:n) {
+    componente <- sample(1:num.comp, 1, prob = p) ## Seleciona um componente de forma aleatória.
+    amostra[i] <- rgamma(1, shape = forma[componente], rate = taxa[componente]) ## Gera um valor para o componente selecionado.
+  }
+  return(amostra) ## Retorna o vetor contendo os valores da amostra.
+}
+
+c.amostrais <- function(amostra) {
+  media.amostral <- mean(amostra) ## Calcula a média amostral.
+  var.amostral <- var(amostra) ## Calcula a variância amostral.
+  assimetria <- skewness(amostra) ## Calcula o coeficiente de assimetria.
+  curtose <- kurtosis(amostra) ## Calcula o excesso de curtose.
+  return(list(media.amostral = media.amostral, variancia.amostral = var.amostral, assimetria = assimetria, curtose = curtose)) ## Retorna uma lista contendo as estatísticas.
+}
+
+#########################################################################################.
+```
+\newpage
+
+# Amostras geradas
+
+```{r, results='asis'}
+set.seed(666) ## Define a semente.
+n.rep <- 100
+
+# 1) -----
+amostra1 <- gerador.normal(n = n.rep, p = pesos1, mi = medias1, dp = desvios1) ## Gera a amostra.
+intervalos1 <- seq(min(amostra1), max(amostra1), length.out = 11) ## Divide os intervalos equiprováveis.
+estatisticas.amt1 <- c.amostrais(amostra1) ## Calcula as estatísticas.
+densidade.amostral1 <- density(amostra1) ## Calcula a densidade.
+
+# 2) -----
+amostra2 <- gerador.normal(n = n.rep, p = pesos2, mi = medias2, dp = desvios2) ## Gera a amostra.
+intervalos2 <- seq(min(amostra2), max(amostra2), length.out = 11) ## Divide os intervalos equiprováveis.
+estatisticas.amt2 <- c.amostrais(amostra2) ## Calcula as estatísticas.
+densidade.amostral2 <- density(amostra2) ## Calcula a densidade.
+
+# 3) -----
+amostra3 <- gerador.normal(n = n.rep, p = pesos3, mi = medias3, dp = desvios3) ## Gera a amostra.
+intervalos3 <- seq(min(amostra3), max(amostra3), length.out = 11) ## Divide os intervalos equiprováveis.
+estatisticas.amt3 <- c.amostrais(amostra3) ## Calcula as estatísticas.
+densidade.amostral3 <- density(amostra3) ## Calcula a densidade.
+
+# 4) -----
+amostra4 <- gerador.gama(n = n.rep, p = pesos4, forma = formas4, taxa = taxas4) ## Gera a amostra.
+intervalos4 <- seq(min(amostra4), max(amostra4), length.out = 11) ## Divide os intervalos equiprováveis.
+estatisticas.amt4 <- c.amostrais(amostra4) ## Calcula as estatísticas.
+densidade.amostral4 <- density(amostra4) ## Calcula a densidade.
+
+lista.estatisticas.amt <- list(estatisticas.amt1, estatisticas.amt2, estatisticas.amt3, estatisticas.amt4) ## Armazena as estatísticas em uma lista.
+
+
+for(i in 1:4)
+{
+  tabela<-data.frame(teorico=c(l.estatisticas.pop[[i]]$media,l.estatisticas.pop[[i]]$variancia,
+                               l.estatisticas.pop[[i]]$assimetria, l.estatisticas.pop[[i]]$curtose),
+                     amostral=c(lista.estatisticas.amt[[i]]$media.amostral,
+                                lista.estatisticas.amt[[i]]$variancia.amostral,
+                                lista.estatisticas.amt[[i]]$assimetria,
+                                lista.estatisticas.amt[[i]]$curtose))
+                     
+                     
+  colnames(tabela)<-c("Teorico", "Amostral")
+  row.names(tabela)<-c("Media", "Variância", "Curtose", "Assimetria")
+  print(knitr::kable(tabela, 
+                     caption = paste0("Tabela comparativa mistura ",i),format = "simple"))
+}
+
+```
+
+Podemos verificar que momentos maiores como a curtose e a assimetria são mais "difíceis" de serem recuperados. Espera-se que para amostras maiores esses valores sejam recuperados.
+
+## Densidade e histograma
+
+```{r}
+par(mfrow = c(2,2)) ## Configura o layout gráfico.
+
+# 1) -----
+hist(amostra1, breaks = intervalos1, freq = F,
+     main = "Mistura 1", xlab = "Amostra", ylab = "Densidade",
+     xlim = c(min(amostra1),max(amostra1)), ylim = c(0,1.5),
+     col = cores[6], border = cores[8]) ## Plota o histograma.
+lines(densidade.amostral1, col = cores[3], lwd = 1) ## Plota a curva de densidade da amostra.
+curve(d.Mist.norm(x, p = pesos1, mi = medias1, dp = desvios1), from = min(amostra1), to = max(amostra1), col = cores[7], lwd = 1, add = T) ## Plota a curva de densidade.
+legend("left", bty = "n", legend = c("FDP", "Densidade"), col = cores[c(7,3)], lty = c(1,1)) ## Adiciona a legenda das curvas.
+legend("topleft", bty = "n", legend = c(paste("Media Amostral: ", round(estatisticas.amt1$media.amostral, 3)), 
+                                       paste("Variancia Amostral: ", round(estatisticas.amt1$variancia.amostral, 3)),
+                                       paste("Assimetria: ", round(estatisticas.amt1$assimetria, 3)),
+                                       paste("Curtose: ", round(estatisticas.amt1$curtose, 3)))) ## Adiciona a legenda.
+
+
+# 2) -----
+hist(amostra2, breaks = intervalos2, freq = F,
+     main = "Mistura 2", xlab = "Amostra", ylab = "Densidade",
+     xlim = c(min(amostra2),max(amostra2)), ylim = c(0,1),
+     col = cores[6], border = cores[8]) ## Plota o histograma.
+lines(densidade.amostral2, col = cores[3], lwd = 1) ## Plota a curva de densidade da amostra.
+curve(d.Mist.norm(x, p = pesos2, mi = medias2, dp = desvios2), from = min(amostra2), to = max(amostra2), col = cores[7], lwd = 1, add = T) ## Plota a curva de densidade.
+legend("left", bty = "n", legend = c("FDP", "Densidade"), col = cores[c(7,3)], lty = c(1,1)) ## Adiciona a legenda das curvas.
+legend("topleft", bty = "n", legend = c(paste("Media Amostral: ", round(estatisticas.amt2$media.amostral, 3)), 
+                                       paste("Variancia Amostral: ", round(estatisticas.amt2$variancia.amostral, 3)),
+                                       paste("Assimetria: ", round(estatisticas.amt2$assimetria, 3)),
+                                       paste("Curtose: ", round(estatisticas.amt2$curtose, 3)))) ## Adiciona a legenda.
+
+# 3) -----
+hist(amostra3, breaks = intervalos3, freq = F,
+     main = "Mistura 3", xlab = "Amostra", ylab = "Densidade",
+     xlim = c(min(amostra3),max(amostra3)), ylim = c(0,1),
+     col = cores[6], border = cores[8]) ## Plota o histograma.
+lines(densidade.amostral3, col = cores[3], lwd = 1) ## Plota a curva de densidade da amostra.
+curve(d.Mist.norm(x, p = pesos3, mi = medias3, dp = desvios3), from = min(amostra3), to = max(amostra3), col = cores[7], lwd = 1, add = T) ## Plota a curva de densidade.
+legend("left", bty = "n", legend = c("FDP", "Densidade"), col = cores[c(7,3)], lty = c(1,1)) ## Adiciona a legenda das curvas.
+legend("topleft", bty = "n",legend = c(paste("Media Amostral: ", round(estatisticas.amt3$media.amostral, 3)), 
+                                       paste("Variancia Amostral: ", round(estatisticas.amt3$variancia.amostral, 3)),
+                                       paste("Assimetria: ", round(estatisticas.amt3$assimetria, 3)),
+                                       paste("Curtose: ", round(estatisticas.amt3$curtose, 3)))) ## Adiciona a legenda.
+
+# 4) -----
+hist(amostra4, breaks = 10, freq = F,
+     main = "Mistura 4", xlab = "Amostra", ylab = "Densidade",
+     xlim = c(min(amostra4),max(amostra4)), ylim = c(0,1),
+     col = cores[6], border = cores[8]) ## Plota o histograma.
+lines(densidade.amostral4, col = cores[3], lwd = 1) ## Plota a curva de densidade da amostra.
+curve(d.Mist.gama(x, p = pesos4, forma = formas4, taxa = taxas4), from = min(amostra4), to = max(amostra4), col = cores[7], lwd = 1, add = T) ## Plota a curva de densidade.
+legend("left", bty = "n", legend = c("FDP", "Densidade"), col = cores[c(7,3)], lty = c(1,1)) ## Adiciona a legenda das curvas.
+legend("topleft", bty = "n",legend = c(paste("Media Amostral: ", round(estatisticas.amt4$media.amostral, 3)), 
+                                       paste("Variancia Amostral: ", round(estatisticas.amt4$variancia.amostral, 3)),
+                                       paste("Assimetria: ", round(estatisticas.amt4$assimetria, 3)),
+                                       paste("Curtose: ", round(estatisticas.amt4$curtose, 3)))) ## Adiciona a legenda.
+```
+
+
+## FDA e empírica
+
+```{r}
+par(mfrow = c(2,2)) ## Configura o layout gráfico.
+
+# 1) -----
+curve(p.Mist.norm(x, p = pesos1, mi = medias1, dp = desvios1), 
+      main = "Mistura 1", xlab = "", ylab = "",
+      from = -6, to = 6, col = cores[7], lwd = 1) ## Plota a curva de densidade.
+lines(ecdf(amostra1), pch = NA, col = cores[3], lwd = 1) ## Plota a curva de distribuição empírica.
+abline(h = c(0,1), col = cores[9], lty = "dashed") ## Traça eixos pontilhados nos pontos y = c(0,1).
+legend("left", bty = "n", legend = c("FDA", "ECDF"), col = cores[c(7,3)], lty = 1) ## Adiciona a legenda das curvas.
+legend("topleft", bty = "n", legend = c(paste("Media Amostral: ", round(estatisticas.amt1$media.amostral, 3)), 
+                                        paste("Variancia Amostral: ", round(estatisticas.amt1$variancia.amostral, 3)),
+                                        paste("Assimetria: ", round(estatisticas.amt1$assimetria, 3)),
+                                        paste("Curtose: ", round(estatisticas.amt1$curtose, 3)))) ## Adiciona a legenda dos valores.
+
+# 2) -----
+curve(p.Mist.norm(x, p = pesos2, mi = medias2, dp = desvios2), 
+      main = "Mistura 2", xlab = "", ylab = "",
+      from = -6, to = 6, col = cores[3], lwd = 1) ## Plota a curva de densidade.
+lines(ecdf(amostra2), pch = NA, col = cores[7], lwd = 1) ## Plota a curva de distribuição empírica.
+abline(h = c(0,1), col = cores[9], lty = "dashed") ## Traça eixos pontilhados nos pontos y = c(0,1).
+legend("left", bty = "n", legend = c("FDA", "ECDF"), col = cores[c(7,3)], lty = 1) ## Adiciona a legenda das curvas.
+legend("topleft", bty = "n", legend = c(paste("Media Amostral: ", round(estatisticas.amt2$media.amostral, 3)), 
+                                        paste("Variancia Amostral: ", round(estatisticas.amt2$variancia.amostral, 3)),
+                                        paste("Assimetria: ", round(estatisticas.amt2$assimetria, 3)),
+                                        paste("Curtose: ", round(estatisticas.amt2$curtose, 3)))) ## Adiciona a legenda dos valores.
+
+# 3) -----
+curve(p.Mist.norm(x, p = pesos3, mi = medias3, dp = desvios3), 
+      main = "Mistura 3", xlab = "", ylab = "",
+      from = -6, to = 6, col = cores[7], lwd = 1) ## Plota a curva de densidade.
+lines(ecdf(amostra3), pch = NA, col = cores[3], lwd = 1) ## Plota a curva de distribuição empírica.
+abline(h = c(0,1), col = cores[9], lty = "dashed") ## Traça eixos pontilhados nos pontos y = c(0,1).
+legend("left", bty = "n", legend = c("FDA", "ECDF"), col = cores[c(7,3)], lty = 1) ## Adiciona a legenda das curvas.
+legend("topleft", bty = "n", legend = c(paste("Media Amostral: ", round(estatisticas.amt3$media.amostral, 3)), 
+                                        paste("Variancia Amostral: ", round(estatisticas.amt3$variancia.amostral, 3)),
+                                        paste("Assimetria: ", round(estatisticas.amt3$assimetria, 3)),
+                                        paste("Curtose: ", round(estatisticas.amt3$curtose, 3)))) ## Adiciona a legenda dos valores.
+
+# 4) -----
+curve(p.Mist.gama(x, p = pesos4, forma = formas4, taxa = taxas4), 
+      main = "Mistura 4", xlab = "", ylab = "",
+      from = -4, to = 8, col = cores[7], lwd = 1) ## Plota a curva de densidade.
+lines(ecdf(amostra4), pch = NA, col = cores[3], lwd = 1) ## Plota a curva de distribuição empírica.
+abline(h = c(0,1), col = cores[9], lty = "dashed") ## Traça eixos pontilhados nos pontos y = c(0,1).
+legend("left", bty = "n", legend = c("FDA", "ECDF"), col = cores[c(7,3)], lty = 1) ## Adiciona a legenda das curvas.
+legend("topleft", bty = "n", legend = c(paste("Media Amostral: ", round(estatisticas.amt4$media.amostral, 3)), 
+                                        paste("Variancia Amostral: ", round(estatisticas.amt4$variancia.amostral, 3)),
+                                        paste("Assimetria: ", round(estatisticas.amt4$assimetria, 3)),
+                                        paste("Curtose: ", round(estatisticas.amt4$curtose, 3)))) ## Adiciona a legenda dos valores.
+```
+\newpage
+
+# Testes de bondade do ajuste
+
+Realizamos o teste de Kolmogorov-Smirnov utilizando a função chisq.test(), para comparar as distribuições amostrais das 4 amostras com suas provenientes distribuições populacionais, considerando o nível de significância $\alpha$= 0.05:
+```{r}
+contagem1 <- hist(amostra1, breaks = intervalos1, plot = FALSE)$counts ## Contar as observações em cada intervalo.
+contagem2 <- hist(amostra2, breaks = intervalos2, plot = FALSE)$counts ## Contar as observações em cada intervalo.
+contagem3 <- hist(amostra3, breaks = intervalos3, plot = FALSE)$counts ## Contar as observações em cada intervalo.
+contagem4 <- hist(amostra4, breaks = intervalos4, plot = FALSE)$counts ## Contar as observações em cada intervalo.
+
+freq.esperada1 <- diff(p.Mist.norm(intervalos1, p = pesos1, mi = medias1, dp = desvios1)) * length(amostra1) ## Calcula a frequência esperada em cada intervalo.
+freq.esperada2 <- diff(p.Mist.norm(intervalos2, p = pesos2, mi = medias2, dp = desvios2)) * length(amostra2) ## Calcula a frequência esperada em cada intervalo.
+freq.esperada3 <- diff(p.Mist.norm(intervalos3, p = pesos3, mi = medias3, dp = desvios3)) * length(amostra3) ## Calcula a frequência esperada em cada intervalo.
+freq.esperada4 <- diff(p.Mist.gama(intervalos4, p = pesos4, forma = formas4, taxa = taxas4)) * length(amostra4) ## Calcula a frequência esperada em cada intervalo.
+
+resultado.tq1 <- chisq.test(contagem1, p = freq.esperada1, rescale.p = TRUE) ## Realiza o teste qui-quadrado.
+resultado.tq2 <- chisq.test(contagem2, p = freq.esperada2, rescale.p = TRUE) ## Realiza o teste qui-quadrado.
+resultado.tq3 <- chisq.test(contagem3, p = freq.esperada3, rescale.p = TRUE) ## Realiza o teste qui-quadrado.
+resultado.tq4 <- chisq.test(contagem4, p = freq.esperada4, rescale.p = TRUE) ## Realiza o teste qui-quadrado.
+
+lista.resultados1 <- list(resultado.tq1, resultado.tq2, resultado.tq3, resultado.tq4) ## Armazena as estatísticas em uma lista.
+
+for (i in 1:4) {
+  elementos <- lista.resultados1[[i]] ## Separa os elementos de cada mistura.
+  texto <- c(paste("Mistura ", i, ":"), paste("P-valor: ", round(elementos$p.value, 3))) ## Armazena o p-valor.
+  cat(texto, sep = "\n") ## Imprime as estatísticas.
+  cat("\n") ## Adiciona um espaço para separar as informações de cada mistura.
+}
+```
+Para todas as amostras, o teste qui-quadrado resultou em um p-valor > 0.05. Pelo teste de hipóteses, não temos evidências o suficiente para rejeitar a hipótese nula.
+
+Entretanto, cabe ressaltar na diferença entre os p-valores. Para as amostras 1 e 2, o p-valor foi alto (> 0.5), enquanto para as amostras 3 e 4, o p-valor foi baixo (< 0.5). Isso indica que há certa discrepância entre as distribuições amostrais e as distribuições populacionais nas amostras 3 e 4, indicativo de que talvez seja necessário um maior tamanho amostral para serem melhor representadas.
+
+
+# Referências
+
+Wikipedia. Central Limit Theorem. Disponível em:
+https://en.wikipedia.org/wiki/Central_limit_theorem.
+
+Wikipedia. Empirical distribution function. Disponível em:
+https://en.wikipedia.org/wiki/Empirical_distribution_function.
+
+Wikipedia. Kolmogorov-Smirnov test. Disponível em:
+https://en.wikipedia.org/wiki/Kolmogorov%E2%80%93Smirnov_test.
+
+Wikipedia. Gamma distribution. Disponível em:
+https://en.wikipedia.org/wiki/Gamma_distribution.
+
+Wikipedia. Normal distribution. Disponível em:
+https://en.wikipedia.org/wiki/Normal_distribution.

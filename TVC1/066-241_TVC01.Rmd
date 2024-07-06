@@ -1,0 +1,175 @@
+---
+title: "TVC1"
+author: "Jaqueline Lamas da Silva"
+date: "09/05/2024"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    fig_width: 5
+    fig_height: 4
+    fig_caption: yes
+  html_document:
+    df_print: paged
+toc: yes
+line-height: 1.5em
+fontsize: 12pt
+header-includes:
+- \renewcommand{\contentsname}{Sumário}
+- \usepackage{fancyhdr}
+- \usepackage{fontspec}
+- \setmainfont{Arial}
+- \usepackage {hyperref}
+- \hypersetup {colorlinks = true, pdfnewwindow=false, pdfstartview=FitH}
+---
+\addtolength{\headheight}{2cm}
+\lhead{\includegraphics[height=1.5cm]{../../template_pdf_rmd/logo.png}}
+\renewcommand{\headrulewidth}{1pt}
+
+
+\pagestyle{fancyplain}
+\renewcommand{\footrulewidth}{0pt}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\newpage
+
+## Questão A:
+
+### Questão 1:
+
+```{r}
+Fx<-function(x)
+{ 
+  ifelse(x>0, 1 - exp(-x) - exp(-2*x) + exp(-3*x),0)
+}
+
+Fx(1)
+Fx(0.5)
+Fx(20) # Aqui a função já acumulou 1, vou utilizar como limite superior do suporte
+
+Qx<-function(p)
+{
+  valor<-optimise(function(x){(Fx(x)-p)^2}, maximum = F, lower = 0 , upper = 20)
+  return(valor$minimum)
+}
+Qx<-Vectorize(Qx)
+
+Qx(c(0.5465723,0.2487201)) # Os valores estão de acordo com o valor da acumulada
+Qx(1)
+
+Rx<-function(n)
+{
+  Qx(runif(n))
+}
+
+```
+\newpage
+
+### Questão 2
+```{r, warning=FALSE}
+set.seed(043)
+amostra<-Rx(1000)
+
+empirica<-ecdf(amostra)
+plot(empirica)
+curve(Fx, from =0, to = 6, add=T, col="coral2")
+```
+As distribuições acumulada empírica e teória estão bem proximas, ou seja, essa amostra gerada parece ser proveniente da acumulada desejada.
+
+\newpage
+
+Vamos considerar um nível de 5% de significância e as hipóteses são:
+
+$H_0$ : A amostra é da acumulada de interesse.
+
+$H_1$: A amostra não é da acumulada de interesse.
+
+```{r, warning=FALSE}
+ks.test(amostra, Fx)
+```
+
+O valor p é maior que o nível de significância, não há evidências para rejeitar $H_0$, os dados parecem ser da acumulada de interesse.
+
+\newpage
+
+### Questão 3:
+
+```{r}
+fx<-function(x){ exp(-x) + exp(-2 * x) * 2 - exp(-3 * x) * 3 } 
+esp<-function(x) {x*fx(x)}
+mu<-integrate(esp, lower = 0, upper=Inf)$value
+
+mu
+
+mean(amostra)
+
+```
+A média amostral é bem próxima da média teórica.
+
+\newpage
+
+### Questão 4:
+
+A probabilidade de X ser menor ou igual a um valor é a distribuição acumulada no ponto x. Já criei a acumulada para resolver as questões anteriores. Para calcular a probabilidade de ser maior que 0.2 basta utilizar o evento complementar.
+
+```{r}
+1-Fx(0.2)
+```
+\newpage
+
+## Questão B:
+
+### Questão 5:
+
+```{r}
+fe<-function(x){(3/4)*(1-x^2) }
+rfe<-function(n)
+{
+  u1<-runif(n,min=-1, max=1)
+  u2<-runif(n,min=-1, max=1)
+  u3<-runif(n,min=-1, max=1)
+  I<-as.numeric(abs(u3) >= abs(u2) & abs(u3)) # Indicadora para evitar ifelse
+  return( I*u2+(1-I)*u3)
+}
+
+```
+
+
+### Questão 6:
+
+```{r}
+set.seed(043)
+amostra<-rfe(1000)
+
+esp<-function(x) {x*fe(x)}
+mu<-integrate(esp, lower = -1, upper=1)$value
+mu #Media teorica
+mean(amostra)
+
+variancia<-function(x, mu) ((x-mu)^2)*fe(x)
+sigma2<-integrate(variancia,mu=mu, lower = -1, upper=1)$value
+sqrt(sigma2)
+sd(amostra)
+```
+Os valores da média e do desvio da amostra gerada estão de acordo com os valores teóricos.
+
+\newpage
+
+### Questão 7:
+
+```{r}
+
+hist(amostra, freq = F, breaks = 50)
+curve(fe, from = -1, to=1, add=T, col="coral2", lwd=3)
+
+```
+
+A amostra parece ser da função desejada, o gerador está bom.
+
+\newpage
+
+### Questão 8:
+
+Uma alternativa seria aplicar o Método da Inversa, o gerador construído gera 3 vezes de uma distribuição uniforme, já pelo o método da inversa é só gerar uma vez de uma distribuição uniforme e aplicar a função quantilica. A quantílica é a inversa da função acumulada.
+

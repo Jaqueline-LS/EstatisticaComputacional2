@@ -1,0 +1,84 @@
+---
+title: "Trabalho Simulação de Eventos Discretos"
+subtitle: "Um problema de reparação"
+author: "Jaqueline Lamas da Silva"
+date: "2023"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    fig_width: 5
+    fig_height: 4
+    fig_caption: yes
+  html_document:
+    df_print: paged
+toc: yes
+line-height: 1.5em
+fontsize: 12pt
+header-includes:
+- \renewcommand{\contentsname}{Sumário}
+- \usepackage{fancyhdr}
+- \usepackage{fontspec}
+- \setmainfont{Arial}
+- \usepackage {hyperref}
+- \hypersetup {colorlinks = true, pdfnewwindow=false, pdfstartview=FitH}
+---
+\addtolength{\headheight}{2cm}
+\lhead{\includegraphics[height=1.5cm]{../../template_pdf_rmd/logo.png}}
+\renewcommand{\headrulewidth}{1pt}
+
+
+\pagestyle{fancyplain}
+\renewcommand{\footrulewidth}{0pt}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Objetivo
+Estimar o valor esperado do tempo de falha do sistema. Quando o sistema vai falhar?
+
+* Variável de tempo: $t$
+
+* Variável de estado: $r$, número de máquinas que estão quebradas no tempo t
+
+**Evento**: Quando uma máquina é concertada ou quando uma máquina quebra.
+
+```{r}
+n<-4
+s<-3
+t<-0
+r<-0
+t.concerto<-Inf
+x<-rexp(n,rate=1)
+event.list<-sort(x)
+
+if(event.list[1]<t.concerto)
+{
+  t<-event.list[1]
+  r<-r+1
+  if(r=s+1)
+  {
+    return(TempoFalha=t)
+  }
+  if(r<s+1)
+  {
+    x<-rexp(1,rate=1)
+    event.list<-sort(c(event.list[-1],x))
+  }
+  if(r==1)
+  {
+    y<-rexp(1,rate=2)
+    t.concerto<-t+y
+  }
+    
+    
+}
+
+f<-function(x) 1 - exp(-x)
+curve(f, from=0, to=10)
+
+plot(ecdf(x))
+
+
+```
+

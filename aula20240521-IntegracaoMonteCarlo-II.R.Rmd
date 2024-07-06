@@ -1,0 +1,232 @@
+---
+title: "aula 21 de maio"
+author: "Davi Loures"
+date: "2024-05-21"
+output: html_document
+---
+
+CASO 2:
+
+$\theta = E[g(x)]=\int g(x)f(x)dx$
+
+$\theta = \int_a^bg(x)dx$
+
+Transformando para uma integral de 0 a 1
+
+$y = \frac{(x-a)}{(b-a)} ,dy = \frac{dx}{(b-a)}$
+
+$x = y(b-a)+a$
+
+$\theta = \int_a^bg(x)dx = \int_0^1g(y(b-a)+a)(b-a)dy=\int^1_0h(y)d(y)$, onde $h(y)=(b-a)g[(y(b-a)+a]$
+
+Exemplo:
+
+$Z\sim N(0,1), \theta = P\{1<Z<2\}=\int_1^2\frac{1}{\sqrt{2\pi}}e^{-\frac{z^2}{2}}dz$
+
+Usando a transformação:
+
+$y = \frac{z-1}{2-1}=z-1$
+
+$h(y)=(b-a)g[(y(b-a)+a]=(2-1)g[y(2-1)+1]=g(y+1)$
+
+logo:
+
+$\theta = \int_0^1\frac{1}{\sqrt{2\pi}}e^{-\frac{(y+1)^2}{2}}dy$
+
+```{r}
+aga <- function(y){
+  (1/sqrt(2*pi))*exp(-((y+1)^2)/2)
+}
+U <- replicate(1000,runif(1000))
+agaU <- apply(U,c(1,2),aga)
+medias <- apply(agaU,2,mean)
+hist(medias, freq = F, breaks = 20)
+abline(v = pnorm(2)-pnorm(1), col = "red", lwd = 2)
+mean(medias)
+sd(medias)
+intervalo <- quantile(medias, probs=c(0.025,0.975))
+intervalo
+diff(intervalo)
+diff(intervalo)/2
+```
+
+Cálculo do erro quadrático médio:
+
+```{r}
+erro.quad <- mean((medias-(pnorm(2)-pnorm(1)))^2)
+log10(erro.quad)
+```
+
+```{r}
+U <- replicate(1000,runif(2000))
+agaU <- apply(U,c(1,2),aga)
+medias2 <- apply(agaU,2,mean)
+hist(medias2, freq = F, breaks = 20)
+abline(v = pnorm(2)-pnorm(1), col = "red", lwd = 2)
+mean(medias2)
+sd(medias2)
+intervalo2 <- quantile(medias2, probs=c(0.025,0.975))
+intervalo2
+diff(intervalo2)
+diff(intervalo2)/2
+erro.quad <- mean((medias2-(pnorm(2)-pnorm(1)))^2)
+log10(erro.quad)
+
+hist(medias, freq = F, breaks = 20)
+abline(v = pnorm(2)-pnorm(1), col = "red", lwd = 2)
+hist(medias2, freq = F, breaks = 20)
+abline(v = pnorm(2)-pnorm(1), col = "red", lwd = 2)
+```
+
+* CASO 3 - Primeira parametrização
+
+$\theta = \int_0^\infty g(x)dx$
+
+Substituição tipo 1:
+
+$y = \frac{1}{x+1}\rightarrow x = \frac{1}{y}-1,dx = \frac{1}{y^2}dy$, logo, como x varia de 0 a infinito, y varia de 0 a 1
+
+$\theta = \int_1^0g(\frac{1}{y}-1)\frac{(-1)}{y^2}dy=\int_0^1h(y)dy$, onde $h(y) = \frac{g(\frac{1}{y}-1)}{y^2}$
+
+Exemplo:
+
+$\theta = \int_0^\infty e^{-x^2}dx=\frac{\sqrt{\pi}}{2}=$ `r sqrt(pi)/2`
+
+```{r}
+aga3 <- function(y){
+  exp(-((1/y)-1)^2)/y^2
+}
+U <- runif(2000)
+mean(aga3(U)) 
+```
+
+* CASO 3 - Segunda parametrização
+
+$\theta = \int^\infty_0g(x)dx$
+
+Utilizando a substituição:
+
+$y = \frac{x}{1+x} \rightarrow x = \frac{y}{1-y}$
+
+Assim como na primeira parametrização, quando x vai pra 0, y vai pra 0, e quando x vai pra infinito, y vai pra 1
+
+$dx = \frac{(1-y)-y}{(1-y)^2}$ #VER ISSO AQ
+
+$\theta = \int^1_0g(\frac{y}{1-y})\frac{1}{(1-y^)2}dy \rightarrow \int^1_0h(y)dy$, onde
+
+$h(y) = \frac{g(\frac{y}{1-y})}{(1-y)^2}$
+
+```{r}
+aga4 <- function(y){
+exp(-(y/(1-y))^2)/((1-y)^2)
+}
+U4 <- runif(2000)
+mean(aga4(U4))
+```
+
+* CASO 3 - Terceira parametrização
+
+$\int^\infty_0f(x)dx=\int^1_0f(x)dx+\int^\infty_1f(x)dx$
+
+Utilizando a substituição:
+
+$y = \frac{1}{x} \rightarrow x = \frac{1}{y}$, logo quando x vai pra 1 y vai pra 1 e quando x vai pra infinito, y vai pra 0
+
+$dx = \frac{-1}{y^2}dy$
+
+Logo, a integral pode ser vista como:
+
+$\int^\infty_0f(x)dx=\int^1_0f(x)dx+\int^0_1f(\frac{1}{y})(-\frac{dy}{d^2})=\int^1_0f(x)dx+\int^0_1f(\frac{1}{y})(-\frac{dy}{d^2})=\int^1_0f(x)dx+\int^0_1f(\frac{1}{y})(\frac{dy}{d^2})$
+
+$= \int^1_0f(x)dx+\int^0_1h(y)dy$, onde $h(y) = \frac{f(\frac{1}{y})}{y^2}$
+
+```{r}
+aga5 <- function(y){
+  exp(-(1/y)^2)/y^2
+}
+
+Unif1 <- runif(1000)
+Unif2 <- runif(1000)
+result <- exp(-(Unif1)^2)+ aga5(Unif2)
+mean(result)
+```
+
+* Estimação de $\pi$
+
+(X,Y) vetor aleatório distribuido em quadrado de lado 2, logo a área do círculo inscito é igual a $\pi$
+
+X,Y iid ~ Unif(-1,1)
+
+área do círculo = (num de pontos dentro do círculo/número de pontos gerados) * 4
+
+pois: Prob(ponto cair dentro do quadrado) = $\frac{\pi}{4}$
+ponto é interno ao círculo se: $x^2+y^2\leq1$
+
+1) Gerar U1 e U2 iid ~ Unif(0,1)
+2) $X = 2U_1-1,Y=2U_2-1$, para X,Y ~ Unif(-1,1)
+3) I = 1 se $x^2+y^2\leq1$ e 0 caso contrário
+Após n repetições do algoritmo acima, a estimação da probabilidade do ponto cair no círculo vai ser a média da variável indicadora
+A estimativa de pi vai ser a estimativa de I*4
+
+```{r}
+estima.pi <- function(n){
+  U1 <- runif(n)
+  U2 <- runif(n)
+  X <- 2*U1 - 1
+  Y <- 2*U2 - 1
+  I <- X^2+Y^2<=1
+  mean(I)*4
+}
+amostra <- replicate(1000,estima.pi(1000))
+quantis <- quantile(amostra, c(0.05,0.95))
+quantis
+hist(amostra, freq = F)
+mean(amostra)
+sum(quantis)/2
+```
+
+Erro relativo $\frac{\hat\pi-\pi}{\pi}$
+
+```{r}
+tamanhos <- c(10^(1:5))
+
+# erro.relativo <- abs((apply(replicate(1000,sapply(tamanhos,estima.pi)),1,mean)-pi)/pi) PARA 1000 REPETIÇÕES 
+
+erro.relativo <- abs((sapply(tamanhos,estima.pi) - pi)/pi)
+plot(log10(tamanhos),log10(erro.relativo))
+abline(lm(log10(erro.relativo)~log10(tamanhos)), col = "red")
+lm(log10(erro.relativo)~log10(tamanhos))
+```
+
+Exemplo das chaves
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+* EXEMPLO
+
+$X_1,X_2,...,X_n \sim Cauchy$, com parâmetro de locação $\theta = 350$
+
+$m(x)=\int_{-\infty}^\infty\prod_{i=1}^n\frac{1}{1 + (x_i-\theta)^2}d\theta$
+
+```{r}
+amostra <- rcauchy(10) + 350
+veros <- function(theta){
+   #u <- prod(dcauchy(amostra))
+  u <- sapply(amostra,function(i)dcauchy(i-theta))
+  u
+  }
+#integrate(veros,lower = -Inf,upper=Inf)
+```
+
