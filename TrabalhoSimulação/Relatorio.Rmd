@@ -34,51 +34,117 @@ header-includes:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Objetivo
-Estimar o valor esperado do tempo de falha do sistema. Quando o sistema vai falhar?
+# Introdução
 
-* Variável de tempo: $t$
+O modelo que estamos considerando é um exemplo clássico de sistemas de reserva e reparo, onde há máquinas em operação e máquinas de reserva que entram em operação quando uma das máquinas principais falha. O objetivo é determinar o tempo até que todas as máquinas (principais e reservas) falhem.
 
-* Variável de estado: $r$, número de máquinas que estão quebradas no tempo t
+**Propriedades Relevantes do Modelo:**
 
-**Evento**: Quando uma máquina é concertada ou quando uma máquina quebra.
+* Tempo de Falha: Distribuição F(x).
+* Número de Máquinas Principais (n): Máquinas em operação.
+* Número de Máquinas de Reserva (s): Máquinas que substituem as principais quando estas falham.
+* Tempo de Reparo: Distribuição G(x)
+* Estados do Sistema: Número de máquinas operacionais e em reparo.
+* Evento de Falha e Reparo: Afetam o estado do sistema.
+
+
+# Desenvolvimento
+Para desenvolver o algoritmo da simulação as instruções da seção 7.7 foram seguidas.
+
+Na construção foi considerado o seguinte caso:
+
+* n = 4 ( 4 máquinas em operação );
+
+* s = 3 ( 3 máquinas reserva );
+
+* $F(x)=1-e^{-x}$ ( tempo de falha das máquinas iid a uma exponencial com $\lambda=1$)
+
+* $G(x)=1-e^{-2x}$ ( tempo de concerto uma exponencial com $\lambda=2$)
 
 ```{r}
-n<-4
-s<-3
-t<-0
-r<-0
+n<-4 # maquinas
+s<-3 # reservas
+t<-0 # tempo
+r<-0 # n° de estragadas
 t.concerto<-Inf
+
 x<-rexp(n,rate=1)
 event.list<-sort(x)
 
-if(event.list[1]<t.concerto)
+MaquinaEstragou<-function(event.list,r,t, t.concerto)
 {
   t<-event.list[1]
-  r<-r+1
-  if(r=s+1)
+  r<-r+1 # falhou
+  if(r==s+1)
   {
     return(TempoFalha=t)
+  }else{
+    x<-rexp(1,rate=1) # tempo em que a substituta vai funcionar
+    event.list<-sort(c(event.list[-1],x+t))
+    if(r==1)
+    {
+      y<-rexp(1,rate=2) # tempo de concerto
+      t.concerto<-t+y  # quando ela ficou pronta
+    }
+    if(event.list[1]<t.concerto)
+    {
+      MaquinaEstragou(event.list,r,t, t.concerto)
+    }
+    else
+    {
+      MaquinaPronta(event.list,r,t,t.concerto)
+    }
   }
-  if(r<s+1)
-  {
-    x<-rexp(1,rate=1)
-    event.list<-sort(c(event.list[-1],x))
-  }
-  if(r==1)
-  {
-    y<-rexp(1,rate=2)
-    t.concerto<-t+y
-  }
-    
-    
+
 }
 
-f<-function(x) 1 - exp(-x)
-curve(f, from=0, to=10)
+MaquinaPronta<-function(event.list, r, t, t.concerto)
+{
+  t<-t.concerto
+  r<-r-1
+  if(r>0) #tem alguma máquina quebrada?
+  {
+    y<-rexp(1,rate=2)
+    t.concerto<-t+y # quando ela vai ficar pronta
+  }
+  if(r==0)
+  {
+    t.concerto<-Inf
+  }
+  if(event.list[1]<t.concerto)
+  {
+    MaquinaEstragou(event.list,r,t, t.concerto)
+  }
+  else
+  {
+    MaquinaPronta(event.list,r,t, t.concerto)
+  }
+}
 
-plot(ecdf(x))
+T.falha<-MaquinaEstragou(event.list,r,t, t.concerto)
 
+# Condições iniciais do sistema
+n<-4 # quatro máquinas
+s<-3 # 3 maquinas reservas
+t<-0 # Tempo
+r<-0 # maquinas quebradas
+t.concerto<-Inf #Quando a proxima maquina quebrada sera concertada, como n tem nenhuma quebrada
+
+
+x<-replicate(10000,rexp(n,rate=1))
+Tempos<-apply(x,MARGIN=2,sort)
+str(Tempos)
+Tempos[,1]
+
+temposDeFalha<-apply(Tempos, MARGIN = 2, FUN = MaquinaEstragou, r=0 , t=0)
+str(temposDeFalha)
+
+
+mean(temposDeFalha)
 
 ```
+
+# Referências
+ROSS, S. M. Simulation. 5th. Ed. London, UK: Academic Press, 2013.
+
 

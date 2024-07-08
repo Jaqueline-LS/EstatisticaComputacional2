@@ -69,7 +69,7 @@ hist(obj$t, freq =F)
 sd(obj$t)
 obj$seed[1]
 
-mean(obj$t - obj$t0) # vies da estimativa bootstrap
+mean(obj$t - obj$t0) # Estimativa bootstrap do vies
 # O estimador bootstrap é viesado para o parametro,  devemos estimar o vies!!!!!!!
 
 
@@ -129,14 +129,15 @@ for(i in 1:n)
 theta.jack
 
 # Estimativa jackkinife do vies
-vies<-(n-1)*(mean(theta.jack)-mean(theta.hat))
+vies<-(n-1)*(mean(theta.jack)-theta.hat)
 vies
 
 # estimativa jackknife do ep
 
-sqrt((n-1)*mean((theta.jack-mean(theta.jack))^2))
+se<-sqrt((n-1)*mean((theta.jack-mean(theta.jack))^2))
 
-
+# CV
+vies/se
 
 
 # Intervalo de confiança Bootstrap
@@ -265,3 +266,161 @@ boot::boot.ci(boot.obj,type = c("bca")) # os valores não são iguais aos feitos
 
 data(ironslag, package = "DAAG")
 plot(magnetic~chemical, data=ironslag, pch=16)
+
+
+
+
+# Exercício do livro 
+# 8.1
+# Estimativa jackknife do vies e do erro padrao para a correlação
+
+data(law, package = "bootstrap")
+theta.hat<-cor(law$LSAT, law$GPA)
+theta.hat
+
+n<-nrow(law)
+theta.J<-numeric(n)
+
+for(i in 1:n)
+{
+  amostra.J<-law[-i,]
+  theta.J[i]<-cor(amostra.J$LSAT, amostra.J$GPA)
+}
+theta.J
+
+# Vies Jackknife
+
+vies<-(n-1)*(mean(theta.J)-theta.hat)
+vies
+
+# Erro padrão Jaccknife
+
+se<-sqrt((n-1)*mean((theta.J-mean(theta.J))^2))
+se
+
+
+# 8.3
+# Intervalo de confiança bootstrap t
+
+data(law, package = "bootstrap")
+theta.hat<-cor(law$LSAT, law$GPA)
+theta.hat
+
+#---------------------Intervalo bootstrap t---------------------
+boot.t.ci<-function(x,B=500,R=100,level=0.95, statistic)
+{
+  # calcula o IC bootstrap t
+  x<-as.matrix(x)
+  n<-nrow(x)
+  stat<-numeric(B)
+  se<-numeric(B)
+  boot.se <- function(x, R, f) {
+    #local function to compute the bootstrap
+    #estimate of standard error for statistic f(x)
+    x <- as.matrix(x)
+    m <- nrow(x)
+    th <- replicate(R, expr = {
+      i <- sample(1:m, size = m, replace = TRUE)
+      f(x[i, ])
+    })
+    return(sd(th))
+  }
+  for (b in 1:B) {
+    j <- sample(1:n, size = n, replace = TRUE)
+    y <- x[j, ]
+    stat[b] <- statistic(y)
+    se[b] <- boot.se(y, R = R, f = statistic)
+  }
+  stat0 <- statistic(x)
+  t.stats <- (stat - stat0) / se
+  se0 <- sd(stat)
+  alpha <- 1 - level
+  Qt <- quantile(t.stats, c(alpha/2, 1-alpha/2), type = 1)
+  names(Qt) <- rev(names(Qt))
+  CI <- rev(stat0-Qt*se0)
+}
+
+estimador<-function(x)cor(x[,1],x[,2])
+
+CI.t<-boot.t.ci(x=law,statistic = estimador)
+
+CI.t
+
+
+
+
+# 8.4
+
+data(aircondit, package = "boot")
+aircondit
+
+#EMV é 1/mean(x)
+
+lambda.hat<-1/mean(aircondit[,1])
+
+set.seed(666)
+n<-nrow(aircondit) # tamanho da amostra
+B<-2000
+lambda.b<-numeric(B)
+for(i in 1:B)
+{
+  indice<-sample(1:n, size=n, replace = T)
+  reamostra<-aircondit[indice,]
+  lambda.b[i]<-1/mean(reamostra)
+}
+lambda.b
+
+# Vies Bootstrap
+vies<-mean(lambda.b)-lambda.hat
+vies
+
+# Erro padrão bootstrap
+sd(lambda.b)
+
+
+#8.5
+
+# Escrever uma funçao que retorne o theta.hat.b, em que o 1° argumento seja os dados amostrais e o segundo o vetor de indices
+EMV.exp<-function(dados, indice)
+{
+  1/(mean(dados[indice,]))
+}
+boot.obj<-boot::boot(data=aircondit,statistic = EMV.exp, R=2000)
+IC<-boot::boot.ci(boot.obj,type = c("basic", "norm", "perc","bca")) 
+
+# Pela propriedade da invariância os intervalos para o tempo médio entre as falhas
+# é o inverso
+
+1/IC$normal[c(2,3)] 
+cat("IC(Média, 95%), normal: [0; 61.4]")
+1/IC$basic[c(4,5)]
+cat("IC(Média, 95%), basico: [0; 76.1]")
+1/IC$percent[c(4,5)]
+cat("IC(Média, 95%), percentil: [46.3; 186.2]")
+1/IC$bca[c(4,5)]
+cat("IC(Média, 95%), BCA: [56.7; 224.8]")
+
+# Por que são diferentes? 
+# O intervalo BCA vale para a transformação feita e ele é possui uma acurácia de segunda ordem.
+# Os intervalos normal e básico não são válidos para a transformação feita e eles não possuem acurácia de segunda ordem.
+# O intervalo Percentil é válido para a transformação feita mas ele só possui acurácia de primeira ordem.
+
+# 8.6
+
+data(scor, package = "bootstrap")
+scor
+
+# função para personalização painel
+painel.cor <- function(x, y, digits = 2, cex.cor, ...){
+  usr <- par("usr"); on.exit(par(usr=usr))
+  par(usr = c(0, 1, 0, 1))
+  # correlation coefficient
+  r <- cor(x, y)
+  txt <- format(c(r, 0.123456789), digits = digits)[1]
+  txt <- paste("r= ", txt, sep = "")
+  text(0.5, 0.6, txt)
+ 
+}
+
+# scatter plot matrix  
+pairs(scor, upper.panel = painel.cor)
