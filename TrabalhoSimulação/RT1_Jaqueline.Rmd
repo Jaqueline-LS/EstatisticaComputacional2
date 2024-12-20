@@ -33,6 +33,7 @@ header-includes:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+\newpage
 
 # Introdução
 
@@ -47,6 +48,7 @@ O modelo que estamos considerando é um exemplo clássico de sistemas de reserva
 * Estados do Sistema: Número de máquinas operacionais e em reparo.
 * Evento de Falha e Reparo: Afetam o estado do sistema.
 
+\newpage
 
 # Desenvolvimento
 Para desenvolver o algoritmo da simulação as instruções da seção 7.7 foram seguidas.
@@ -57,19 +59,11 @@ Na construção foi considerado o seguinte caso:
 
 * s = 3 ( 3 máquinas reserva );
 
-* $F(x)=1-e^{-x}$ ( tempo de falha das máquinas iid a uma exponencial com $\lambda=1$)
+* $F(x)=1-e^{-x}$ ( tempo de falha das máquinas iid a uma exponencial com $\lambda=1$) 1/dia
 
 * $G(x)=1-e^{-2x}$ ( tempo de concerto uma exponencial com $\lambda=2$)
 
 ```{r}
-n<-4 # maquinas
-s<-3 # reservas
-t<-0 # tempo
-r<-0 # n° de estragadas
-t.concerto<-Inf
-
-x<-rexp(n,rate=1)
-event.list<-sort(x)
 
 MaquinaEstragou<-function(event.list,r,t, t.concerto)
 {
@@ -79,7 +73,7 @@ MaquinaEstragou<-function(event.list,r,t, t.concerto)
   {
     return(TempoFalha=t)
   }else{
-    x<-rexp(1,rate=1) # tempo em que a substituta vai funcionar
+    x<-rexp(1,rate=1) # tempo que a substituta vai funcionar
     event.list<-sort(c(event.list[-1],x+t))
     if(r==1)
     {
@@ -121,14 +115,12 @@ MaquinaPronta<-function(event.list, r, t, t.concerto)
   }
 }
 
-T.falha<-MaquinaEstragou(event.list,r,t, t.concerto)
-
 # Condições iniciais do sistema
 n<-4 # quatro máquinas
 s<-3 # 3 maquinas reservas
 t<-0 # Tempo
 r<-0 # maquinas quebradas
-t.concerto<-Inf #Quando a proxima maquina quebrada sera concertada, como n tem nenhuma quebrada
+t.concerto<-Inf # Quando a proxima maquina quebrada sera concertada
 
 
 x<-replicate(10000,rexp(n,rate=1))
@@ -143,7 +135,14 @@ str(temposDeFalha)
 mean(temposDeFalha)
 
 ```
+Com a configuração utilizada de exemplo, o tempo em que todas as máquinas falharam foi de aproximadamente um dia e meio. A taxa utilizada para o tempo de falha foi de 1/dia.
 
+## Verification of the Simulation Model
+
+Para acompanhar o funcionamento do programa desenvolvido foi aplicado um teste de mesa, no qual anota-se os valores assumidos pelas variáveis no decorrer da execução do programa. A técnica foi importante para identificar um erro de atualização de uma variável na chamada recursiva.
+
+
+\newpage
 # Referências
 ROSS, S. M. Simulation. 5th. Ed. London, UK: Academic Press, 2013.
 

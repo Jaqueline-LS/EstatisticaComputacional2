@@ -422,5 +422,58 @@ painel.cor <- function(x, y, digits = 2, cex.cor, ...){
  
 }
 
+
+
 # scatter plot matrix  
 pairs(scor, upper.panel = painel.cor)
+
+# Algebra e Analysis são as diciplinas mais correlacionadas
+
+
+r.func<-function(dados, indice)
+{
+  with(scor[indice,],cor(mec, vec))
+}
+
+boot.obj<-boot::boot(data=scor,statistic = r.func, R=2000)
+boot::boot.ci(boot.obj)
+
+Sigma<-cor(scor)
+Lambda<-eigen(Sigma)$values
+
+r.func<-function(dados, indice)
+{
+  Sigma<-cor(scor[indice,])
+  Lambda<-eigen(Sigma)$values
+  return(Lambda[1]/sum(Lambda))
+}
+boot.obj<-boot::boot(data=scor,statistic = r.func, R=2000)
+boot::boot.ci(boot.obj)
+
+Sigma<-cor(scor)
+Lambda<-eigen(Sigma)$values
+theta.hat<-Lambda[1]/sum(Lambda)
+theta.hat
+
+n<-nrow(scor)
+theta.J<-numeric(n)
+
+for(i in 1:n)
+{
+  amostra.J<-scor[-i,]
+  Sigma<-cor(amostra.J)
+  Lambda<-eigen(Sigma)$values
+  theta.J[i]<-Lambda[1]/sum(Lambda)
+}
+theta.J
+
+vies<-(n-1)*(mean(theta.J)-theta.hat)
+vies
+
+# Erro padrão Jaccknife
+
+se<-sqrt((n-1)*mean((theta.J-mean(theta.J))^2))
+se
+
+
+

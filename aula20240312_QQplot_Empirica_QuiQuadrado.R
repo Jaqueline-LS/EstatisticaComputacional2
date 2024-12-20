@@ -108,10 +108,11 @@ points(x=pt_teorico, y=pt_amostra, pch=3, col="red", cex=2)
 # A reta é calculada passando pelo primeiro e terceiro quartil
 
 # caudas pesadas
-amostra_t<-rt(30, df=2)
+amostra_t<-rt(1000)
 qqnorm(amostra_t)
 qqline(amostra_t)
 
+moments::kurtosis(amostra_t)
 
 
 probs<-ppoints(30)

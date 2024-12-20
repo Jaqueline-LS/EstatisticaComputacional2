@@ -1,0 +1,179 @@
+---
+title: "TVC2"
+author: "Jaqueline Lamas da Silva"
+date: "09/07/2024"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    fig_width: 5
+    fig_height: 4
+    fig_caption: yes
+  html_document:
+    df_print: paged
+toc: yes
+line-height: 1.5em
+fontsize: 12pt
+header-includes:
+- \renewcommand{\contentsname}{Sumário}
+- \usepackage{fancyhdr}
+- \usepackage{fontspec}
+- \setmainfont{Arial}
+- \usepackage {hyperref}
+- \hypersetup {colorlinks = true, pdfnewwindow=false, pdfstartview=FitH}
+---
+\addtolength{\headheight}{2cm}
+\lhead{\includegraphics[height=1.5cm]{../../template_pdf_rmd/logo.png}}
+\renewcommand{\headrulewidth}{1pt}
+
+
+\pagestyle{fancyplain}
+\renewcommand{\footrulewidth}{0pt}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\newpage
+
+
+# Questão A
+
+## 1.
+
+Vamos estimar o valor da integral a seguir utilizando integração Monte Carlo. 
+
+\begin{center}
+$\int_{0}^{\infty} \int_{0}^x e^{-(x+y)}dydx$
+\end{center}
+
+Para resolver o problema foram criadas duas funções, a função H que aplica a tranformação para obter limites de integração de 0 a 1 e a função G que calcula o valor da função $exp(-(x+y))$ com as restrições dos suportes.
+```{r}
+funcao.g<-function(x,y)
+{
+  I.y<-as.numeric(y<x) #restrição do suporte de y
+  exp(-(x+y)) * I.y
+}
+
+funcao.h<-function(u1,u2)
+{
+   funcao.g(u1/(1-u1) , u2/(1-u2) ) / ((1-u1)^2 * (1-u2)^2) 
+   # Transformação do caso 3 (limites de integração de 0 a infinito) 
+   # nas duas variáveis, o termo ((1-u1)^2 * (1-u2)^2) é o jacobiano
+}
+
+u1<-runif(1000000)
+u2<-runif(1000000)
+mean(funcao.h(u1,u2))
+```
+
+## 2.
+Utilizando o "Wolframalpha" temos que:
+
+
+![Resolução pelo Wolframalpha](C:/ufjf/EstatisticaComputacional2/TVC1/i7.png)
+
+A integração Monte Carlo com 1 milhão de amostras uniformes chegou no verdadeiro valor com uma boa precisão.
+
+
+
+\newpage
+
+# Questão B:
+```{r}
+dados<-c(6, 11, 22, 48, 3, 9, 17, 3, 5, 10, 10)
+```
+## 1. Amplitude média amostral ($\hat\theta$)
+
+```{r}
+theta.hat<-(min(dados)+max(dados))/2
+```
+* $\hat\theta$ = `r theta.hat`
+
+## 2. Estimativa do viés de $\hat\theta$
+```{r}
+B<-2000
+amp.media.amos<-function(dados,indice) 
+{
+  amostra.B<-dados[indice]
+  theta.B<-(min(amostra.B)+max(amostra.B))/2
+}
+
+obj<-boot::boot(dados,amp.media.amos,R=B)
+obj
+```
+* $\hat\theta_b^*$ = 25.5
+
+* Viés = -4.53875
+
+## 3. Histograma das estatísticas bootstrap
+
+```{r}
+hist(obj$t, freq = F, breaks = 50, col="beige")
+```
+
+## 4. Estimativa bootstrap do erro padrão
+```{r}
+obj
+```
+O erro padrão da amplitude média amostral é 6.7794.
+
+## 5. Intervalo de confiança 99%
+
+O intervalo BCA foi escolhido para ser calculado, pois ele possui boas propriedades.
+```{r}
+boot::boot.ci(obj, conf = 0.99, type = "bca")
+```
+* IC($\theta$, 99%) = (7.0 , 28.5), ou seja, com 99% de confiabilidade o intervalo inclui o verdadeiro valor do parâmetro.
+
+\newpage
+
+# Questão C:
+
+## 1. Gerador
+```{r}
+rlognorm<-function(n, mean=0, sd=1)
+{
+  Z<-rnorm(n)
+  #transformação
+  exp(Z)
+}
+```
+
+## 2. Geração de 1000 valores
+```{r}
+Y<-rlognorm(1000,mean = 0,sd=1)
+hist(Y, freq=F)
+curve(dlnorm(x, meanlog = 0, sdlog = 1), from=0, to=15, col="#f16913", lwd=3, add=T)
+
+fn<-ecdf(Y)
+plot(fn)
+curve(plnorm(x),from=0, to=16, col="#f16913", lwd=3, add=T)
+```
+
+$H_0$: Os valores gerados são provenientes de uma distribuição lognormal com média 0 e desvio padrão 1.
+
+$H_1$: Os valores não seguem tal distribuição.
+
+```{r}
+ks.test(Y, "plnorm")
+```
+Não temos evidências significativas para rejeitar a hipótese nula, ou seja, é razoável dizer que os valores gerados são de um distribuição lognormal com parâmetros $\mu$=0 e $\sigma$=1.
+
+
+* Conclusão: O gerador se mostra eficiente em gerar valores da distribuição especificada tanto pelas verificações gráficas quanto pelo teste de Kolmogorov-Smirnov.
+
+
+## 3. Média amostral e valor esperado teórico
+
+```{r}
+mean(Y)
+```
+$E(X) = exp (\mu + \frac{1}{2\sigma^2})$
+
+```{r}
+mu<-0
+sigma<-1
+valor.teorico<-exp(mu + (1/2*sigma^2))
+valor.teorico
+```
+
+

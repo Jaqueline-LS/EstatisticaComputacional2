@@ -80,3 +80,4 @@ qqline(X[,3])
 abline(v=1.96)
 
 # Limitações do método, metodo numerico embutido ( Cholesky )
+
